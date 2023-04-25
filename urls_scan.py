@@ -9,31 +9,31 @@ import os.path
 
 # Calculate the security score and add messages according to the headers
 def check_header(response_headers):
-            counter = 0
-            msg = []
-            if 'Content-security-policy' in response_headers:
-                counter+=1
-                msg = ["(V) Content-security-policy"]
+    score = 0
+    msg = []
+    if 'Content-security-policy' in response_headers:
+        score+=1
+        msg += ["(V) Content-security-policy"]
 
-            if 'X-Frame-Options' in response_headers:
-                if 'X-Frame-Options' == 'strict-origin-when-cross-origin':
-                    counter+=1
-                    msg += ['(V) X-Frame-Options']
-                    
-            if 'Referrer-Policy' in response_headers:
-                if 'Referrer-Policy' == 'strict-origin-when-cross-origin':
-                    counter+=1
-                    msg += ['(V) Referrer-Policy']
-
-            if 'X-Content-Type-Options' in response_headers:
-                counter+=1
-                msg += ['(V) X-Content-Type-Options']
-
-            if 'Permissions-Policy' in response_headers:
-                counter+=1
-                msg += ['(V) Permissions-Policy']
+    if 'X-Frame-Options' in response_headers:
+        if response_headers['X-Frame-Options'] == 'strict-origin-when-cross-origin':
+            score+=1
+            msg += ['(V) X-Frame-Options']
             
-            return counter, msg
+    if 'Referrer-Policy' in response_headers:
+        if response_headers['Referrer-Policy'] == 'strict-origin-when-cross-origin':
+            score+=1
+            msg += ['(V) Referrer-Policy']
+
+    if 'X-Content-Type-Options' in response_headers:
+        score+=1
+        msg += ['(V) X-Content-Type-Options']
+
+    if 'Permissions-Policy' in response_headers:
+        score+=1
+        msg += ['(V) Permissions-Policy']
+
+    return score, msg
 
 # Check if the first word in the input is a url
 def check_if_url(input):
@@ -62,47 +62,50 @@ def get_url_by_asking():
             continue
     return urls_to_scan
 
-# Create the csv and json files from input
-def create_files(urls_to_scan):
+# Scan the urls and create the csv and json files
+def scan_urls(urls_to_scan):
     info_dict = {}
-    urls=[]
+    scanned_urls = []
     scores = []
-    msgs =[]
+    msgs = []
 
     for url in urls_to_scan:
-        if validators.url(str(url)):
-            urls+= [url]
+        if validators.url(url):
+            # A GET request to the API
+            try:
+                response = requests.get(url)
+                response_headers = response.headers
+            except Exception as e:
+                print(e)
+                continue
 
-        # A GET request to the API
-            response = requests.get(str(url))
-
-            response_headers = response.headers
-
-            counter, msg = check_header(response_headers)
-            scores += [counter]
+            score, msg = check_header(response_headers)
+            scanned_urls+= [url]
+            scores += [score]
             msgs += [msg]
-        
-            info_dict['url'] = urls
-            info_dict['security score'] = scores
-            info_dict['reason'] = msgs
-            info_dict['time'] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
-            df = pd.DataFrame(info_dict)
-            df.to_csv('output_file.csv')
+    # Create the csv and json files
+    info_dict['url'] = scanned_urls
+    info_dict['security score'] = scores
+    info_dict['reason'] = msgs
+    info_dict['time'] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
-            with open('output.json', mode='w') as file:
-                json.dump(info_dict, file)
+    df = pd.DataFrame(info_dict)
+    df.to_csv('output_file.csv')
+
+    with open('output.json', mode='w') as file:
+        json.dump(info_dict, file)
 
 # Create a parser
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--url', type=str)
+parser.add_argument('--urls', type=str)
 
 args = parser.parse_args()
 
-if args.url:
-    if check_if_url(str(args.url)):
-        urls = args.url
+if args.urls:
+    if check_if_url(args.urls):
+        urls = args.urls
         urls_to_scan = urls.split(' ')
     else:
         urls_to_scan = ""
@@ -110,4 +113,4 @@ if args.url:
 else:
     urls_to_scan = get_url_by_asking()
 
-create_files(urls_to_scan)
+scan_urls(urls_to_scan)
