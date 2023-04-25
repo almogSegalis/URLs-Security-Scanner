@@ -7,6 +7,7 @@ import argparse
 import validators
 import os.path
 
+# Calculate the security score and add messages according to the headers
 def check_header(response_headers):
             counter = 0
             msg = []
@@ -34,13 +35,15 @@ def check_header(response_headers):
             
             return counter, msg
 
+# Check if the first word in the input is a url
 def check_if_url(input):
     url = input.split(' ',1)[0]
     if validators.url(url):
         return True
     else:
         return False
-        
+
+# Get the url from the user input
 def get_url_by_asking():
     while True:
         user_input = input("Please enter a url or a file path: ")
@@ -59,25 +62,7 @@ def get_url_by_asking():
             continue
     return urls_to_scan
 
-
-# Create a parser
-parser = argparse.ArgumentParser()
-
-parser.add_argument('--url', type=str)
-
-args = parser.parse_args()
-
-if args.url:
-    if check_if_url(str(args.url)):
-        urls = args.url
-        urls_to_scan = urls.split(' ')
-    else:
-        urls_to_scan = ""
-        get_url_by_asking()
-else:
-    urls_to_scan = get_url_by_asking()
-
-
+# Create the csv and json files from input
 def create_files(urls_to_scan):
     info_dict = {}
     urls=[]
@@ -107,5 +92,22 @@ def create_files(urls_to_scan):
 
             with open('output.json', mode='w') as file:
                 json.dump(info_dict, file)
+
+# Create a parser
+parser = argparse.ArgumentParser()
+
+parser.add_argument('--url', type=str)
+
+args = parser.parse_args()
+
+if args.url:
+    if check_if_url(str(args.url)):
+        urls = args.url
+        urls_to_scan = urls.split(' ')
+    else:
+        urls_to_scan = ""
+        get_url_by_asking()
+else:
+    urls_to_scan = get_url_by_asking()
 
 create_files(urls_to_scan)
